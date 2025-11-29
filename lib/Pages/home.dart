@@ -25,7 +25,7 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
     super.initState();
   }
 
-  void select(idx){
+  void select(int idx){
       setState(() {
           if(selected.contains(idx)){
               selected.removeWhere((item)=>item==idx);
@@ -74,25 +74,16 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
             return CustomCard(cardData: card?[index], isSelected: selected.contains(card?[index]["id"]), isSelectionMode: _selectionMode, onSelect: select,tap: openNotes);
           })
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       floatingActionButton: FloatingActionButton(
         elevation: 8,
-        shape: const CircleBorder(),
         onPressed:() async {
           await Navigator.push(context,
             MaterialPageRoute(builder: (context)=>const Notespage(type:"new")));
         },
         tooltip: 'Increment',
         child: const Icon(Icons.add),
-      ),
-      bottomNavigationBar: BottomAppBar(
-        notchMargin: 5,
-        elevation: 6,
-        height: 50,
-        color:  Theme.of(context).colorScheme.inversePrimary,
-        shape: const CircularNotchedRectangle(),
-        clipBehavior: Clip.antiAlias,
-      ) 
+      ), 
     );
   }
 }

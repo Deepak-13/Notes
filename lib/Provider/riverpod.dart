@@ -1,8 +1,8 @@
 import 'dart:convert';
-import 'dart:io';
 import 'dart:math';
+import 'dart:typed_data';
+import 'package:app_v1/Provider/storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path_provider/path_provider.dart';
 
 
 final  note= NotifierProvider<NotesNotifier, List<Map<String, dynamic>>>(NotesNotifier.new);
@@ -51,57 +51,12 @@ class DataNotifier extends Notifier<Map<String, dynamic>>{
     }
 }
 
-class Storage {
 
-  Future<File> get _localFile async {
-    final directory = await getDownloadsDirectory();
-    final path = directory?.path;
-    return File('$path/notes.txt');
-  }
-
-  Future<File> writeimg(List<int> data,String filename) async {
-    final directory = await getApplicationDocumentsDirectory();
-    final path = directory.path;
-    final imageFile = File('$path/$filename');
-    return imageFile.writeAsBytes(data);
-  }
-
-  Future<List<int>> readImage(String filename) async {
-    try {
-      final directory = await getApplicationDocumentsDirectory();
-      final path = directory.path;
-      final file = File('$path/$filename');
-      return file.readAsBytes();
-    } catch (e) {
-      return [];
-    }
-  }
-
-  Future<File> write(List<Map<String, dynamic>> data) async {
-    final file = await _localFile;
-    final jsonofdata = jsonEncode(data);
-    return file.writeAsString(jsonofdata);
-  }
-
-  Future<List<Map<String, dynamic>>> read() async {
-    try{
-      final file = await _localFile;
-      final contents = await file.readAsString();
-      if (contents.isEmpty) return [];
-      final dynamicList = jsonDecode(contents) as List<dynamic>;
-      return dynamicList.cast<Map<String, dynamic>>();
-    }
-    catch (e) {
-      return [];
-    }
-  }
-
-
-}
 
 class NotesNotifier extends Notifier<List<Map<String, dynamic>>>{
 
     final store = Storage();
+    final filename ="img_";
     @override
     build() {
         fetchfromstorage();
@@ -113,16 +68,31 @@ class NotesNotifier extends Notifier<List<Map<String, dynamic>>>{
     }
   
 
-   void add(String title,String content) {
+   void add(String title,String content,List<Uint8List> img) {
         int maxId = state.isEmpty ? 0 : state.map((card) => card['id'] as int).reduce((value, element) => max(value, element));
         int newId = maxId + 1;
-        final newCard = {"title": title, "id": newId,"content":content};
+        String name="$filename$newId";
+        if(img.isNotEmpty){
+          final data=img.map((item)=>base64Encode(item)).toList();
+          store.writeimg(data, name);
+        }
+
+        final newCard = {"title": title, "id": newId,"content":content,"imgfile":img.isNotEmpty?name:''};
         state = [...state, newCard];
         store.write(state);
     }
 
-    void delete(List select) {
+    Future<void> delete(List select) async {
        final idsToDelete = select.toSet();
+       for (var card in state) {
+        int cardId = card['id'] as int;
+        if (idsToDelete.contains(cardId)) {
+          String filename = card['imgfile'] as String;
+          if (filename.isNotEmpty) {
+            await store.deleteImageFile(filename); 
+          }
+        }
+      }
        state = state.where((card) => !idsToDelete.contains(card['id'])).toList();
        store.write(state);
     }
@@ -141,10 +111,20 @@ class NotesNotifier extends Notifier<List<Map<String, dynamic>>>{
 
     Map<String, dynamic>? fetch(int? id){
       try {
+            
             return state.firstWhere((card) => card['id'] == id);
         } catch (e) {
             // Handle case where ID is not found
             return null;
         }
+    }
+
+    Future<List<Uint8List>> fetchimg(int? id) async {
+      final items =state.firstWhere((card) => card['id'] == id);
+      final List<String> datafromfile = await store.readImage(filename);
+      final List<Uint8List> decodedBytesList = datafromfile.map((item){
+        return base64Decode(item);
+      }).toList();
+      return decodedBytesList;
     }
 }
