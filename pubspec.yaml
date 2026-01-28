@@ -1,0 +1,61 @@
+name: app_v1
+description: "A new Flutter project."
+publish_to: 'none' 
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.9.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  flutter_riverpod: ^3.0.3
+  dio: ^5.9.0
+  path_provider: ^2.1.5
+  path: ^1.9.1
+  image_picker: ^1.2.1
+  flutter_speed_dial: ^7.0.0
+  carousel_slider: ^5.1.1
+  flutter_masonry_view: ^0.0.2
+  widget_zoom: ^0.0.4
+  flutter_native_splash: ^2.4.7
+  flutter_launcher_icons: ^0.14.4
+  sqflite: ^2.4.2
+  flutter_image_compress: ^2.4.0
+  flutter_staggered_grid_view: ^0.7.0
+  photo_view: ^0.15.0
+  flutter_local_notifications: ^19.5.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^6.0.0
+  custom_lint: ^0.8.0
+  riverpod_lint: ^3.0.3
+
+flutter:
+  assets:
+    - assets/images/
+  uses-material-design: true
+
+flutter_native_splash:
+  color: "#ffffff"
+  image: assets/resources/Splash.png
+  fullscreen: true 
+  android_12:
+     color: "#ffffff"
+     image: assets/resources/Splash.png
+     icon_background_color: "#ffffff"
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/resources/Icon.png"
+
+  adaptive_icon_background: "#000000" 
+  adaptive_icon_foreground: "assets/resources/Icon.png"
+  adaptive_icon_foreground_inset: 3
+  
