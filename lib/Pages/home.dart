@@ -1,9 +1,10 @@
 
-import 'package:app_v1/Components/custom_appbar.dart';
-import 'package:app_v1/Components/custom_card.dart';
-import 'package:app_v1/Components/side_menu.dart';
-import 'package:app_v1/Pages/notes.dart';
-import 'package:app_v1/Pages/settings.dart';
+import 'package:notes/Components/custom_appbar.dart';
+import 'package:notes/Components/custom_card.dart';
+import 'package:notes/Components/side_menu.dart';
+import 'package:notes/Pages/notes.dart';
+import 'package:notes/Pages/reminderList.dart';
+import 'package:notes/Pages/settings.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -29,6 +30,14 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
   @override
   void initState() {
     super.initState();
+    if (NotificationService.launchNotificationId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        final int id = NotificationService.launchNotificationId!;
+        await ref.read(noteprovider.notifier).disableReminder(id);
+        Navigator.push(context, MaterialPageRoute(builder: (context) => Notespage(type: "exist", idx: id)));
+        NotificationService.launchNotificationId = null;
+      });
+    }
   }
 
   void select(int idx){
@@ -57,12 +66,18 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
   }
 
   Future<void> openNotes(int idx) async {
+        print(idx);
       await Navigator.push(context, MaterialPageRoute(builder: (context)=>Notespage(type: "exist",idx:idx)));
   }
 
   Future<void> openSettings() async {
     Navigator.pop(context);
     Navigator.push(context,MaterialPageRoute(builder: (context)=>Settings()));
+  }
+
+  Future<void> openNotification() async {
+    Navigator.pop(context);
+    Navigator.push(context,MaterialPageRoute(builder: (context)=>ReminderList()));
   }
 
   @override
@@ -73,7 +88,7 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
     final pinned = list.where((c) => c['Pinned'] == 1).toList();
     final others = list.where((c) => c['Pinned'] == 0).toList();
     return Scaffold(
-      drawer: SideMenu(settings: openSettings,),
+      drawer: SideMenu(settings: openSettings,notification: openNotification),
       appBar: CustomAppbar(mode: _selectionMode, count: selected.length.toString(), close: closeselection),
       body:
       list.isEmpty?

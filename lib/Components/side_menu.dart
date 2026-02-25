@@ -2,9 +2,13 @@ import 'package:flutter/material.dart';
 
 class SideMenu extends StatelessWidget{
   final Function() settings;
+  final Function() notification;
   const SideMenu({super.key, 
-    required this.settings
+    required this.settings,
+    required this.notification
   });
+
+  
   @override
   Widget build(BuildContext context) {
     return Drawer(
@@ -41,6 +45,12 @@ class SideMenu extends StatelessWidget{
           onTap: settings,
           iconColor: Theme.of(context).colorScheme.primary,
         ),
+        // ListTile(
+        //   leading: const Icon(Icons.access_time_filled ),
+        //   title: const Text('Notifications'),
+        //   onTap: notification,
+        //   iconColor: Theme.of(context).colorScheme.primary,
+        // ),
         ],
       ),
     );

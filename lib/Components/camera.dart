@@ -11,8 +11,8 @@ class Camera extends StatelessWidget{
     final src=type=="camera"?ImageSource.camera:ImageSource.gallery;
     if(type=="gallery")
     {
-      final List<XFile>? imgs= await picker.pickMultiImage();
-      if(imgs!=null && imgs.isNotEmpty)
+      final List<XFile> imgs= await picker.pickMultiImage();
+      if(imgs.isNotEmpty)
       {
         for(var img in imgs){
           getimg(img);

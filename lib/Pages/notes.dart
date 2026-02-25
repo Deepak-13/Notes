@@ -1,13 +1,16 @@
-import 'dart:math';
 import 'dart:typed_data';
-import 'package:app_v1/Components/camera.dart';
-import 'package:app_v1/Components/imgdisplay.dart';
-import 'package:app_v1/Provider/comman.dart';
+import 'package:notes/Components/camera.dart';
+import 'package:notes/Components/dateTimeSheet.dart';
+import 'package:notes/Components/imgdisplay.dart';
+import 'package:notes/Provider/comman.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 import 'dart:async';
+
+import 'package:timezone/timezone.dart' as tz;
 
 class Notespage extends ConsumerStatefulWidget{
   final String type;
@@ -25,12 +28,18 @@ class _NotespageState extends ConsumerState<Notespage>{
     final ValueNotifier<bool> isDialOpen = ValueNotifier(false);
     late String _orginalTitle = ''; 
     late String _orginalContent = '';
+    tz.TZDateTime? reminderDateTime;
+    tz.TZDateTime? _orginalreminderDateTime;
     late List<Uint8List> _orginalImg = [];
+    String reminderFrequency = "Once";
+    String _orginalReminderFrequency = "Once";
     String heroTag='notes_new';
     int pinned =0;
+    int reminder =0;
     bool _isNewNote=false;
     int? _currentId;
     int _orginalPin=0;
+    int _orginalReminder=0;
     Future<void> addimg(XFile img) async {
         isDialOpen.value=false;
         final Uint8List bytes= await img.readAsBytes();
@@ -60,9 +69,22 @@ class _NotespageState extends ConsumerState<Notespage>{
           titlecontroller.text=card["Title"]?? '';
           contentcontroller.text=card["Description"]?? '';
           pinned=card['Pinned'];
+          reminder=card['Reminder'];
+          reminderFrequency = card['Frequency'] ?? "Once";
+         
           _orginalPin = pinned;
+          _orginalReminder = reminder;
+          _orginalReminderFrequency = reminderFrequency;
+          
           _orginalTitle = titlecontroller.text;
           _orginalContent = contentcontroller.text;
+          print(card['ReminderDateTime']);
+          if(card['ReminderDateTime']!=null)
+          {
+            DateTime? dt = DateTime.parse(card['ReminderDateTime']);
+            reminderDateTime= tz.TZDateTime.from(dt, tz.local);
+            _orginalreminderDateTime= tz.TZDateTime.from(dt, tz.local);
+          } 
         }
       } 
     }
@@ -93,6 +115,9 @@ class _NotespageState extends ConsumerState<Notespage>{
 
       final imageCountChanged = _capturedImageList.length != _orginalImg.length;
       final pinchanged = pinned != _orginalPin;
+      final reminderchanged = reminder != _orginalReminder;
+      final datetimechanged = reminder==1 && reminderDateTime != _orginalreminderDateTime;
+      final frequencyChanged = reminder==1 && reminderFrequency != _orginalReminderFrequency;
       bool imageContentChanged = false;
       if (!imageCountChanged && _capturedImageList.isNotEmpty) {
         for (int i = 0; i < _capturedImageList.length; i++) {
@@ -102,13 +127,31 @@ class _NotespageState extends ConsumerState<Notespage>{
           }
         }
       }
-      return textChanged || imageCountChanged || imageContentChanged || pinchanged;
+      return textChanged || imageCountChanged || imageContentChanged || pinchanged || reminderchanged || datetimechanged || frequencyChanged;
     }
 
     void pin(){
       setState(() {
           pinned=pinned==0?1:0;
       });
+    }
+
+    void setReminder(int active,tz.TZDateTime datetime, String frequency) {
+      if(active!=2)
+      {
+        setState(() {
+          reminder=active;
+          if(active==1)
+          {
+            reminderDateTime=datetime;
+            reminderFrequency = frequency;
+          }
+          else{
+            reminderDateTime=null;
+            reminderFrequency = "Once";
+          }
+        });
+      } 
     }
 
     Future<int> update()
@@ -118,7 +161,16 @@ class _NotespageState extends ConsumerState<Notespage>{
       final content = contentcontroller.text.trim();
       if (_isNewNote) {
         if (title.isNotEmpty || content.isNotEmpty || _capturedImageList.isNotEmpty){
-            var data ={"title":title,"content":content,"img":_capturedImageList,"pinned":pinned};
+            var data ={
+              "title":title,
+              "content":content,
+              "img":_capturedImageList,
+              "pinned":pinned,
+              'reminder':reminder, 
+              'frequency': reminderFrequency,
+              "reminderDateTime": (reminder == 1 && reminderDateTime != null)? 
+              tz.TZDateTime.from(reminderDateTime!, tz.local)
+              : null};
             id = await ref.read(noteprovider.notifier).add(data);
             if (mounted) {
               setState(() {
@@ -134,7 +186,18 @@ class _NotespageState extends ConsumerState<Notespage>{
         if (allowsave()) {
           if(title.isNotEmpty || content.isNotEmpty || _capturedImageList.isNotEmpty)
           {
-            var data ={"id":_currentId,"title":title,"content":content,"img":_capturedImageList,"pinned":pinned};
+            var data ={
+              "id":_currentId,
+              "title":title,
+              "content":content,
+              "img":_capturedImageList,
+              "pinned":pinned,
+              "reminder":reminder,
+              "frequency": reminderFrequency,
+              "reminderDateTime": (reminder == 1 && reminderDateTime != null)? 
+              tz.TZDateTime.from(reminderDateTime!, tz.local)
+              : null
+              };
             ref.read(noteprovider.notifier).update(data);
             Future.microtask(() {
               ref.invalidate(noteImagesProvider((noteId: id, limit: null)));
@@ -152,7 +215,6 @@ class _NotespageState extends ConsumerState<Notespage>{
       }
       return _currentId ?? 0;
     }
-
     @override
     void dispose() { 
         titlecontroller.dispose();
@@ -160,7 +222,19 @@ class _NotespageState extends ConsumerState<Notespage>{
         isDialOpen.dispose();
         super.dispose();
     }
-
+    Future<void> openmodal(BuildContext context) async {
+      await BatteryPermissionHandler.secureExactTimings(context);
+      showModalBottomSheet<void>(
+              context: context,
+              backgroundColor: Theme.of(context).bottomSheetTheme.modalBackgroundColor,
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              builder: (BuildContext context) {
+                return Datetimesheet(setreminder: setReminder, reminder: reminder,reminderDateTime: reminderDateTime!=null? tz.TZDateTime.from(reminderDateTime!, tz.local):null, frequency: reminderFrequency);
+              },
+            );
+    }
     @override
     Widget build(BuildContext context){
      
@@ -173,7 +247,7 @@ class _NotespageState extends ConsumerState<Notespage>{
         child: Scaffold(
         resizeToAvoidBottomInset: true,
         appBar: AppBar(
-          title: Text("Note",style: TextStyle()),
+          title: Text("Notes",style: TextStyle()),
           actions: [
             IconButton(
                   iconSize: 30,
@@ -181,6 +255,12 @@ class _NotespageState extends ConsumerState<Notespage>{
                   tooltip: 'Pin',
                   onPressed: () => pin(),
                 ),
+            IconButton(
+        iconSize: 30,
+        icon: Icon(reminder==1?Icons.add_alert:Icons.add_alert_outlined),
+        tooltip: 'Reminder',
+        onPressed: () => openmodal(context),
+    )
           ],
         ),
         body: Material(
@@ -241,6 +321,59 @@ class _NotespageState extends ConsumerState<Notespage>{
                 )
                 )
               ),
+              if(reminder==1)
+              SafeArea(
+                bottom: true,
+                child:  Align(
+                  alignment: Alignment.centerRight,
+                  child: InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: () => openmodal(context),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.outline.withAlpha(40),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.access_time_filled_rounded,
+                          size: 22,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                        const SizedBox(width: 12),
+                        Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                                Text(
+                                    DateFormat("dd MMMM hh:mm a").format(reminderDateTime!.toLocal()),
+                                    style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w700,
+                                        color: Theme.of(context).colorScheme.onSurface,
+                                    ),
+                                ),
+                                if (reminderFrequency != "Once")
+                                    Text(
+                                        reminderFrequency, // Show frequency if not Once
+                                        style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w500,
+                                            color: Theme.of(context).colorScheme.onSurface.withAlpha(150),
+                                        ),
+                                    ),
+                            ],
+                        ),
+                      ],
+                    ),
+                ))))
             ]
           ),
         ),
@@ -257,13 +390,11 @@ class _NotespageState extends ConsumerState<Notespage>{
               direction:SpeedDialDirection.right,
               children: [ 
                 SpeedDialChild(
-                 
                   backgroundColor: Colors.transparent,
                   elevation: 0,
                   child: Camera(type: "camera", getimg: addimg),
                 ),
                 SpeedDialChild(
-                  
                   backgroundColor: Colors.transparent,
                   elevation: 0,
                   child: Camera(type: "gallery", getimg: addimg),
@@ -272,4 +403,6 @@ class _NotespageState extends ConsumerState<Notespage>{
             ),
       ));
     }
+    
+      
 }

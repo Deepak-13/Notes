@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
+import 'package:timezone/timezone.dart' as tz;
 class SqfliteProvider {
 
   SqfliteProvider._privateConstructor();
@@ -12,20 +14,32 @@ class SqfliteProvider {
   static Database? _database;
   static Future<Database> get database async {
     if (_database != null) return _database!;
+     String path = '';
 
-    final databasePath = await getDatabasesPath();
-    final path = join(databasePath, 'my_database.db');
+    if (kIsWeb) {
+      databaseFactory = databaseFactoryFfiWeb;
+      path = 'my_web_db.db';
+    } else {
+      final databasePath = await getDatabasesPath();
+      path = join(databasePath, 'my_database.db');
+    }
+    
     _database = await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: (db, version) async {
         await db.execute(
-          'CREATE TABLE Notes_table(id INTEGER PRIMARY KEY AUTOINCREMENT, Title TEXT, Description TEXT,Imagefile TEXT,Created_Date TEXT,Modified_Date TEXT,Pinned INTEGER DEFAULT 0)',
+          'CREATE TABLE Notes_table(id INTEGER PRIMARY KEY AUTOINCREMENT, Title TEXT, Description TEXT,Imagefile TEXT,Created_Date TEXT,Modified_Date TEXT,Pinned INTEGER DEFAULT 0,Reminder INTEGER DEFAULT 0,ReminderDateTime TEXT, Frequency TEXT DEFAULT "Once")',
         );
         
         await db.execute(
           '''CREATE TABLE Settings_table(id INTEGER PRIMARY KEY CHECK (id = 1), view INTEGER DEFAULT 2, theme TEXT DEFAULT 'Default')''',
         );
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await db.execute('ALTER TABLE Notes_table ADD COLUMN Frequency TEXT DEFAULT "Once"');
+        }
       },
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
@@ -101,7 +115,7 @@ class SqfliteProvider {
    }
 
 
-  Future<int> insertNote(String title, String description, String imagefile,int pinned) async {
+  Future<int> insertNote(String title, String description, String imagefile,int pinned,int reminder,tz.TZDateTime? reminderDateTime, String frequency) async {
     final db = await database;
     final Id = await db.transaction((txn) async {
     final date = DateTime.now().toIso8601String();
@@ -113,9 +127,11 @@ class SqfliteProvider {
           'Imagefile': imagefile,
           'Created_Date':date,
           'Modified_Date':date,
-          'Pinned':pinned
+          'Pinned':pinned,
+          'Reminder':reminder,
+          'ReminderDateTime':reminderDateTime?.toLocal().toString(),
+          'Frequency': frequency
         },
-       
       );
       return noteId;
     });
@@ -131,7 +147,7 @@ class SqfliteProvider {
       );
    }
 
-   Future<void> updateNote(int id, String title, String description,String imagefile,int pinned) async {
+   Future<void> updateNote(int id, String title, String description,String imagefile,int pinned,int reminder,tz.TZDateTime? reminderDateTime, String frequency) async {
       final db = await database;
       final date = DateTime.now().toIso8601String();
       await db.update(
@@ -141,7 +157,24 @@ class SqfliteProvider {
           'Description': description,
           'Imagefile': imagefile,
           'Modified_Date':date,
-          'Pinned':pinned
+          'Pinned':pinned,
+          'Reminder':reminder,
+          'ReminderDateTime':reminderDateTime?.toLocal().toString(),
+          'Frequency': frequency
+        },
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+   }
+
+   Future<void> updateReminder(int id, int reminder, String? reminderDateTime, String frequency) async {
+      final db = await database;
+      await db.update(
+        'Notes_table',
+        {
+          'Reminder': reminder,
+          'ReminderDateTime': reminderDateTime,
+          'Frequency': frequency
         },
         where: 'id = ?',
         whereArgs: [id],

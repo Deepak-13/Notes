@@ -1,19 +1,28 @@
 
-import 'package:app_v1/Provider/comman.dart';
-import 'package:app_v1/Provider/theme.dart';
-import 'package:flutter/material.dart' hide Theme;
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
+import 'package:notes/Provider/comman.dart';
+import 'package:notes/Provider/global.dart';
+import 'package:notes/Provider/theme.dart';
+import 'package:flutter/material.dart' hide Theme, Notification;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:timezone/data/latest_all.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 import 'Pages/home.dart' as home;
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  const AndroidInitializationSettings initializationSettingsAndroid =AndroidInitializationSettings('app_icon');
+  tz.initializeTimeZones();
+  final TimezoneInfo timeZoneInfo = await FlutterTimezone.getLocalTimezone();
+  final String timeZoneName = timeZoneInfo.identifier;
+  tz.setLocalLocation(tz.getLocation(timeZoneName));
+  final notification = NotificationService();
+  await notification.initializeNotification();
   runApp(
     ProviderScope(
       child:MyApp()
     ));
 }
+
+
 
 class MyApp extends ConsumerWidget {
   const MyApp({super.key});
@@ -30,6 +39,7 @@ class MyApp extends ConsumerWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: mode,
+      navigatorKey: navigatorKey,
       home: initializationStatus.when(
         data: (_) => const home.MyHomePage(),
         loading: () => const Scaffold(

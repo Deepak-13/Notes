@@ -38,6 +38,17 @@ class AppTheme {
       titleLarge: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18),
       bodyMedium: TextStyle(color: Colors.black87, fontSize: 14),
     ),
+
+    bottomSheetTheme: BottomSheetThemeData(
+      backgroundColor: Colors.white,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      modalBackgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+    ),
+
   );
 
   static final ThemeData darkTheme = ThemeData(
@@ -73,6 +84,20 @@ class AppTheme {
     textTheme: const TextTheme(
       titleLarge: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
       bodyMedium: TextStyle(color: Color(0xFFB0B0B0), fontSize: 14),
+    ),
+
+    bottomSheetTheme: BottomSheetThemeData(
+      backgroundColor: const Color(0xFF1A1A1A), // slightly lighter than scaffold
+      modalBackgroundColor: const Color(0xFF1A1A1A),
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        side: const BorderSide(
+          color: Color(0xFF2C2C2C), // subtle border
+          width: 1,
+        ),
+      ),
     ),
   );
 }

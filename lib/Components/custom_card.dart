@@ -1,6 +1,5 @@
-import 'dart:typed_data';
 
-import 'package:app_v1/Provider/comman.dart';
+import 'package:notes/Provider/comman.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -22,6 +21,7 @@ class CustomCard extends ConsumerWidget{
 
     @override
     Widget build(BuildContext context,WidgetRef ref) {
+      print("cardData: $cardData");
       final colorScheme = Theme.of(context).colorScheme;
       final VoidCallback onTap = isSelectionMode ? () => onSelect(cardData["id"]) : () => tap(cardData["id"]);
       final VoidCallback? onLongPress = isSelectionMode ? null : () => onSelect(cardData["id"]);
@@ -119,19 +119,35 @@ class CustomCard extends ConsumerWidget{
                         )
                       )
                   ),
-                if(cardData['Pinned'] == 1) 
+                if(cardData['Pinned'] == 1 || cardData['Reminder'] == 1) 
                  Positioned(
                     top: 8,
                     right: 8,
                     child: 
-                      Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.5), 
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.push_pin_rounded, color: Colors.white, size: 16),
-                      ) 
+                    Row(
+                      children: [
+                        if(cardData['Pinned'] == 1) 
+                          Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.5), 
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.push_pin_rounded, color: Colors.white, size: 16),
+                          ),
+                        if(cardData['Pinned']==1 && cardData['Reminder']==1) 
+                          SizedBox(width: 4),
+                        if(cardData['Reminder'] == 1) 
+                          Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.5), 
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(Icons.access_time_filled_rounded, color:Colors.white, size: 16),
+                        ) 
+                      ]
+                    )   
                   )
               ],
             )
