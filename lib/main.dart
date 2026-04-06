@@ -1,57 +1,61 @@
+import 'dart:math';
+import 'dart:typed_data';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
-import 'package:notes/Provider/comman.dart';
-import 'package:notes/Provider/global.dart';
-import 'package:notes/Provider/theme.dart';
-import 'package:flutter/material.dart' hide Theme, Notification;
+import 'package:notes/Components/Splash.dart';
+import 'package:notes/Services/comman.dart';
+import 'package:notes/Services/global.dart';
+import 'package:notes/Services/theme.dart';
+import 'package:flutter/material.dart' hide Notification;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'Pages/home.dart' as home;
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  tz.initializeTimeZones();
-  final TimezoneInfo timeZoneInfo = await FlutterTimezone.getLocalTimezone();
-  final String timeZoneName = timeZoneInfo.identifier;
-  tz.setLocalLocation(tz.getLocation(timeZoneName));
-  final notification = NotificationService();
-  await notification.initializeNotification();
-  runApp(
-    ProviderScope(
-      child:MyApp()
-    ));
+  
+  runApp(UncontrolledProviderScope(container: container, child: MyApp()));
 }
-
-
 
 class MyApp extends ConsumerWidget {
   const MyApp({super.key});
-  final theme=AppTheme;
+  final theme = AppTheme;
   @override
-  Widget build(BuildContext context,WidgetRef ref) {
-    
-    final initializationStatus = ref.watch(initializationProvider);
+  Widget build(BuildContext context, WidgetRef ref) {
     final settingsData = ref.watch(dataprovider);
-    final theme = settingsData['theme'] ?? 'Default';
-    final mode = theme=='Default'?ThemeMode.system:theme=='Light'?ThemeMode.light:ThemeMode.dark;
+    final theme = settingsData['theme'] ?? 'System';
+    final mode = theme == 'System'
+        ? ThemeMode.system
+        : theme == 'Light'
+        ? ThemeMode.light
+        : ThemeMode.dark;
+    Color navColor = ElevationOverlay.applySurfaceTint(
+      Theme.of(context).colorScheme.surface,
+      Theme.of(context).colorScheme.surfaceTint,
+      3,
+    );
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
+      theme: ref.watch(themeProvider('light')),
+      darkTheme: ref.watch(themeProvider('dark')),
       themeMode: mode,
       navigatorKey: navigatorKey,
-      home: initializationStatus.when(
-        data: (_) => const home.MyHomePage(),
-        loading: () => const Scaffold(
-          body: Center(
-            child: CircularProgressIndicator(),
+      builder: (context, child) {
+        final theme = Theme.of(context);
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: SystemUiOverlayStyle(
+            systemNavigationBarColor: theme.scaffoldBackgroundColor,
+            systemNavigationBarIconBrightness:
+                theme.brightness == Brightness.dark
+                ? Brightness.light
+                : Brightness.dark,
           ),
-        ),
-        error: (err, stack) => Scaffold(
-          body: Center(child: Text('Error loading data: $err')), 
-        ),
-      )
+          child: child!,
+        );
+      },
+      home: SplashScreen(),
     );
   }
 }
-
